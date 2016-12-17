@@ -44,9 +44,9 @@ fid.write('***************** PART *****************\n')
 fid.write('****************************************\n')
 fid.write('*part, name=PART\n')
 # Nodes
-fid.write('*nodes, nset=NS_ALLNODES\n')
+fid.write('*node, nset=NS_ALLNODES\n')
 for i in nodelist:
-    fid.write('{:.0f}, {:.12f}, {:.12f} {:.12f}\n'.format(i[0],i[1],i[2],i[3]))
+    fid.write('{:.0f}, {:.12f}, {:.12f}, {:.12f}\n'.format(i[0],i[1],i[2],i[3]))
 # Elements
 fid.write('*element, type=C3D8R, elset=ES_ALLELEMENTS\n')
 for i in elemlist:
@@ -64,11 +64,11 @@ fid.write('*orientation, name=ANISOTROPY, system=cylindrical, definition=coordin
           '0, 0, 0, 0, 0, 1\n'
           )
 fid.write('*solid section, elset=ES_ALLELEMENTS, material=MATERIAL, orientation=ANISOTROPY\n')
-fid.write('*transform, nset=NS_ALLNODES, type=C\n' +
-          '0, 0, 0, 0, 0, 1\n'
-          )
 fid.write('*Hourglass Stiffness\n' +
           '40.0, , , \n'
+          )
+fid.write('*transform, nset=NS_ALLNODES, type=C\n' +
+          '0, 0, 0, 0, 0, 1\n'
           )
 fid.write('*end part\n')
 # end part
@@ -94,12 +94,16 @@ nodenum+=1
 fid.write('*node, nset=NS_RPBOT\n' +
           '{:.0f}, 0, 0, 0\n'.format(nodenum)
           )
+# Riks monitoring point, must be defined in the assembly
+fid.write('** Riks displacement monitoring node must be defined in the assemlby\n' + 
+          '*nset, nset=RIKSMON, instance=INSTANCE\n' + 
+          'NS_DISPROT_LO\n')
 # Surfaces
 fid.write('*surface, type=node, name=SURF_TOPSURFACE\n' +
           'INSTANCE.NS_TOPSURFACE\n'
           )
 fid.write('*surface, type=node, name=SURF_BOTSURFACE\n' +
-          'INSTANCE.NS_BOTSURFACE\n'
+          'INSTANCE.NS_BOTTOMSURFACE\n'
           )
 # Kinematic coupling
 fid.write('*orientation, name=ORI_COUPLING, system=cylindrical, definition=coordinates\n' +
@@ -146,9 +150,9 @@ else:
 ### INITIAL BCs ###
 ###################
 fid.write('*boundary\n' +
-          'NS_RPBOT, 1, 6 \n' + 
-          'NS_RPTOP, 1, 2 \n' +      # Top ref point can only translate up and rotate about axis
-          'NS_RPTOP, 4, 5 \n'
+          'ASSEMBLY.NS_RPBOT, 1, 6 \n' + 
+          'ASSEMBLY.NS_RPTOP, 1, 2 \n' +      # Top ref point can only translate up and rotate about axis
+          'ASSEMBLY.NS_RPTOP, 4, 5 \n'
           )
 
 ###################
@@ -160,8 +164,9 @@ fid.write('*step, name=STEP, nlgeom=yes, inc=500\n')
 if alpha != 'PS':
     # Riks if tension and torsion
     fid.write('*static, riks\n' +
-            '0.01, 1.0, 1e-05, .005, 2, ASSEMBLY.NS_DISPROT_LO, {:.0f}, {:.3f}\n'.format(riks_DOF_num, riks_DOF_val)
+            '0.01, 1.0, 1e-05, .005, 2, ASSEMBLY.RIKSMON, {:.0f}, {:.3f}\n'.format(riks_DOF_num, riks_DOF_val)
               )
+    fid.write('**[1]Inital arc len, [2]total step, [3]minimum increm, [4]max increm (no max if blank), [5]Max LPF, [6]Node whose disp is monitored, [7]DOF, [8]Max Disp\n')
     fid.write('*cload\n' +
               'ASSEMBLY.NS_RPTOP, 3, {:.2f}\n'.format(force) + 
               'ASSEMBLY.NS_RPTOP, 6, {:.2f}\n'.format(torque)
@@ -175,7 +180,7 @@ else:
 # field output
 fid.write('*output, field, frequency=1\n')
 fid.write('*node output, nset=INSTANCE.NS_DISPROT_LO\n' +   # disprot nodesets
-          'COOR\n'
+          'U, UR\n'
           )
 fid.write('*node output, nset=INSTANCE.NS_DISPROT_HI\n' +
           'U, UR\n'
@@ -184,16 +189,31 @@ fid.write('*node output, nset=ASSEMBLY.NS_RPTOP\n' +    # refpt node
           'U, UR, CF\n'
           )
 fid.write('*node output, nset=ASSEMBLY.NS_RPBOT\n' +
-          'RF\n'
+          'RF, RM\n'
           )          
 fid.write('*node output, nset=INSTANCE.NS_RADIALCONTRACTION\n' +    # radial contraction set
-          'COOR\n'
+          'U, UR\n'
           )
 for i in ['ES_Z', 'ES_TH', 'ES_TH_BACK']:
-    fid.write('*element output, nset=INSTANCE.{}, directions=YES\n'.format(i) +    # sts, stn in element sets
-              'S, PE, LE, SDV\n'
+    fid.write('*element output, elset=INSTANCE.{}, directions=YES\n'.format(i) +    # sts, stn in element sets
+              'S, PE, LE'
               )
-
+    if constit in ['H8','anis','ANIS']:
+        fid.write(', SDV1, SDV2\n')
+    else:
+        fid.write('\n')
+# History output (coor)
+fid.write('** COORn must be called under history output\n')
+fid.write('*output, history, frequency=1\n')
+fid.write('*node output, nset=INSTANCE.NS_DISPROT_LO\n' +
+          'COOR1, COOR2, COOR3\n'
+          )
+fid.write('*node output, nset=INSTANCE.NS_DISPROT_HI\n' +
+          'COOR1, COOR2, COOR3\n'
+          )
+fid.write('*node output, nset=INSTANCE.NS_RADIALCONTRACTION\n' +    # radial contraction set
+          'COOR1, COOR2, COOR3\n'
+          )        
 fid.write('*end step\n')
 # end step
 
