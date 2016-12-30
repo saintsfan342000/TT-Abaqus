@@ -14,6 +14,7 @@ nodelist = ['node_coords_cors', 'node_coords_fine', 'node_coords_med',
             'node_coords_ref2_z', 'node_indices_cors', 'node_indices_fine',
             'node_indices_med', 'node_indices_ref1_mid', 'node_indices_ref1_th',
             'node_indices_ref1_z', 'node_indices_ref2_z']
+
 for k,name in enumerate(nodelist):
     splitname = name.split('_')
     if len(splitname) == 3:
@@ -172,3 +173,4 @@ for i,el in enumerate(elnums):
         fid.write('{:.0f} ,'.format(el))
 
 fid.close()
+

@@ -20,11 +20,11 @@ y, [:,1] = Axial coord
 z or q, [:,2] = Angle coordinate theta
 '''
 try:
-    worthless, Lg, Ltop, ODtop, ODg, tg, R, num_el_fine_th, dt, eccen = argv
-    Lg = float(Lg)  # Length of gage section (full, not considering symmetry plane)
+    worthless, Lg, Ltop, ODtop, ID, tg, R, num_el_fine_th, dt, eccen = argv
+    Lg = float(Lg)  # Half-length of gage section
     Ltop = float(Ltop)  # Length of thick section above radius/chamf
-    ODtop = float(ODtop)    # Outer RADIUS of thick section
-    ODg = float(ODg)  # Inner RADIUS
+    ODtop = float(ODtop)/2    # Outer RADIUS of thick section
+    ID = float(ID)/2  # Inner RADIUS
     tg = float(tg)  # mean thickness of test sxn.  Must mean = 0.5*(tmin + tmax)
     R = float(R)    # Radius of chamf
     num_el_fine_th = int(num_el_fine_th)  # Num elements thru the test section thickness
@@ -33,13 +33,12 @@ except:
     Lg = 0.4 / 2
     Ltop = 0.5  # Length of thick section above radius/chamf
     ODtop = 1.9685/2    # Radius of thick section
-    ODg = 1.826/2 # Inner Radius
+    ODg = 1.75/2 # Inner Radius
     tg = .038
     R = .125    # Radius of chamf
     num_el_fine_th = 3 # Num elements thru the test section thicknes
     dt = 0
 
-ID = ODg - tg   
 angle = 2*pi    # 2pi for full tube
 coord_end_chamf = sqrt( R**2 - (ODtop-(ID+tg+R))**2 ) + Lg  # y-coord where chamfer reaches ODtop
 ytop = coord_end_chamf + Ltop
@@ -50,7 +49,7 @@ def CalcOD(Y):
     X = empty(Y.shape)
     rgn1 = (0<=Y) & (Y<=Lg)
     rgn2 = (Lg<Y) & (Y<=coord_end_chamf)
-    rgn3 = (coord_end_chamf<Y)
+    rgn3 = (coord_end_chmf<Y)
     X[rgn1] = ID + tg
     X[rgn2] = -sqrt( R**2 - (Y[rgn2]-Lg)**2 ) + (ID+tg+R)
     X[rgn3] = ODtop

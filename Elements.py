@@ -21,18 +21,6 @@ nc_cors = n.load('./ConstructionFiles/node_coords_cors.npy')
 nc_med = n.load('./ConstructionFiles/node_coords_med.npy')
 nc_fine = n.load('./ConstructionFiles/node_coords_fine.npy')
 
-try:
-    worthless, Lg, Ltop, ODtop, ID, tg, R, num_el_fine_th, dt, eccen = argv
-    Lg = float(Lg)  # Length of gage section (full, not considering symmetry plane)
-    Ltop = float(Ltop)  # Length of thick section above radius/chamf
-    ODtop = float(ODtop)    # Outer RADIUS of thick section
-    ID = float(ID)  # Inner RADIUS
-    tg = float(tg)  # thickness of test sxn
-    R = float(R)    # Radius of chamf
-    num_el_fine_th = int(num_el_fine_th)  # Num elements thru the test section thickness
-except:
-    pass
-
 del nc_fine
 del nc_med
 del nc_cors

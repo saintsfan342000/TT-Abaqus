@@ -24,6 +24,10 @@ except IndexError:
     riks_DOF_val = .05
     constit = 'vm'
 
+# Just make sure we have a valid constitutive model
+if not( constit in ['vm', 'VM', 'H8', 'h8', 'anis', 'ANIS']):
+    raise ValueError("Bad constit given '{}'.\nMust be 'vm', 'VM', 'H8', 'anis', 'ANIS'.".format(constit))
+
 nodelist = n.load('./ConstructionFiles/abaqus_nodes.npy')
 elemlist = n.load('./ConstructionFiles/abaqus_elements.npy')
 
@@ -143,8 +147,6 @@ elif constit in ['ANIS', 'anis']:
         mat = matfid.read()
         fid.write(mat)
         matfid.close()
-else:
-    raise ValueError("Bad constit given '{}'.\nMust be 'vm', 'VM', 'H8', 'anis', 'ANIS'.".format(constit))
 
 ###################
 ### INITIAL BCs ###
