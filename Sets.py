@@ -69,7 +69,7 @@ rng = ( (ni_cors[:,1] == 0 ) & (ni_cors[:,2] == 0 ) &
         (ni_cors[:,0] == ni_cors[:,0].max()) )
 nodenums = compress(rng, ni_cors[:,3])
 if len(nodenums) != 1:
-    raise ValueError('Seeking a single node, but len(nodenums)!=1')
+    raise ValueError('Seeking a single node for NS_DISPROT_LO, but len(nodenums)!=1')
 else:
     fid.write('{}\n'.format(nodenums[0]))
 
@@ -80,7 +80,7 @@ rng = ( (ni_cors[:,1] == 1 ) & (ni_cors[:,2] == 0 ) &
         (ni_cors[:,0] == ni_cors[:,0].max()) )
 nodenums = compress(rng, ni_cors[:,3])
 if len(nodenums) != 1:
-    raise ValueError('Seeking a single node, but len(nodenums)!=1')
+    raise ValueError('Seeking a single node for NS_DISROT_HI, but len(nodenums)!=1')
 else:
     fid.write('{}\n'.format(nodenums[0]))    
 

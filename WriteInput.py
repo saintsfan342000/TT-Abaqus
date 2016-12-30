@@ -2,32 +2,42 @@ import numpy as n
 from numpy import (linspace, asarray, in1d, empty,
                     hstack , vstack, pi, compress)
 from sys import argv
+from pandas import read_excel
 
 '''
 Writes the input file
 '''
 
 try:
-    inpname = argv[1]
-    alpha = float(argv[2])
-    force = float(argv[3])
-    torque = float(argv[4])
-    riks_DOF_num = int(argv[5])
-    riks_DOF_val = float(argv[6])
-    constit = argv[7]
+    expt = int(argv[1])
+    inpname = argv[2]
+    constit = argv[3]
 except IndexError:
-    inpname = 'Input2'
-    alpha = 0.5
-    force = 1000
-    torque = 2000
-    riks_DOF_num = 6
-    riks_DOF_val = .05
+    expt = 20
+    inpname = 'Input_20'
     constit = 'vm'
 
-# Just make sure we have a valid constitutive model
+# Make sure we have a valid constitutive model
 if not( constit in ['vm', 'VM', 'H8', 'h8', 'anis', 'ANIS']):
     raise ValueError("Bad constit given '{}'.\nMust be 'vm', 'VM', 'H8', 'anis', 'ANIS'.".format(constit))
 
+# Open up TT-Summary to get the limit loads and some other info
+key = read_excel('TT-Summary.xlsx',sheetname='Summary',header=None,index_col=None,skiprows=1).values
+key = key[ key[:,0] == expt ]
+a_true, R, t, force, torque = n.mean(key[:,[2,3,4,9,10]], axis=0) # Since this has shape (1,...)
+torque*=(2*pi*R*R*t) # torque to force
+K = a_true/R # load ratio
+force = K*torque # force
+if (a_true >= 3.4) or (n.isnan(a_true)):
+    # Disp. control:  Monitor axial disp
+    riks_DOF_num = 3
+    riks_DOF_val = .05
+else:
+    # Rot. control: Monito rotation
+    riks_DOF_num = 6
+    riks_DOF_val = .05
+
+# Load up the node and element lists
 nodelist = n.load('./ConstructionFiles/abaqus_nodes.npy')
 elemlist = n.load('./ConstructionFiles/abaqus_elements.npy')
 
@@ -163,10 +173,10 @@ fid.write('*boundary\n' +
 
 fid.write('*step, name=STEP, nlgeom=yes, inc=500\n')
 # [1]Inital arc len, [2]total step, [3]minimum increm, [4]max increm (no max if blank), [5]Max LPF, [6]Node whose disp is monitored, [7]DOF, [8]Max Disp
-if alpha != 'PS':
+if not n.isnan(a_true):
     # Riks if tension and torsion
     fid.write('*static, riks\n' +
-            '0.01, 1.0, 1e-05, .005, 2, ASSEMBLY.RIKSMON, {:.0f}, {:.3f}\n'.format(riks_DOF_num, riks_DOF_val)
+            '0.01, 1.0, 1e-05, .005, 1.1, ASSEMBLY.RIKSMON, {:.0f}, {:.3f}\n'.format(riks_DOF_num, riks_DOF_val)
               )
     fid.write('**[1]Inital arc len, [2]total step, [3]minimum increm, [4]max increm (no max if blank), [5]Max LPF, [6]Node whose disp is monitored, [7]DOF, [8]Max Disp\n')
     fid.write('*cload\n' +
