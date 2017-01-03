@@ -33,9 +33,9 @@ if (a_true >= 3.4) or (n.isnan(a_true)):
     riks_DOF_num = 3
     riks_DOF_val = .05
 else:
-    # Rot. control: Monito rotation
+    # Rot. control: Monitor rotation
     riks_DOF_num = 6
-    riks_DOF_val = .05
+    riks_DOF_val = 15*pi/180
 
 # Load up the node and element lists
 nodelist = n.load('./ConstructionFiles/abaqus_nodes.npy')
@@ -143,7 +143,7 @@ fid.write('***************  MATERIAL **************\n')
 fid.write('****************************************\n')
 
 if constit in ['vm', 'VM']:
-    with open('./ConstructionFiles/abaqus_material_VM.txt','r') as matfid:
+    with open('./ConstructionFiles/abaqus_material_VM_TT20.txt','r') as matfid:
         mat = matfid.read()
         fid.write(mat)
         matfid.close()
@@ -180,8 +180,8 @@ if not n.isnan(a_true):
               )
     fid.write('**[1]Inital arc len, [2]total step, [3]minimum increm, [4]max increm (no max if blank), [5]Max LPF, [6]Node whose disp is monitored, [7]DOF, [8]Max Disp\n')
     fid.write('*cload\n' +
-              'ASSEMBLY.NS_RPTOP, 3, {:.2f}\n'.format(force) + 
-              'ASSEMBLY.NS_RPTOP, 6, {:.2f}\n'.format(torque)
+              'ASSEMBLY.NS_RPTOP, 3, {:.5f}\n'.format(force) + 
+              'ASSEMBLY.NS_RPTOP, 6, {:.5f}\n'.format(torque)
               )
 else:
     fid.write('*static\n' +
@@ -234,3 +234,4 @@ Abaqus Users Guide: Sxn 2.1.5
 Output database output of field vector-valued quantities at transformed nodes is in the global system. The local transformations are also written to the output database. You can apply these transformations to the results in the Visualization module of Abaqus/CAE to view the vector components in the transformed systems.
 '''
 fid.close()
+

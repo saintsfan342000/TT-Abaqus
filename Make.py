@@ -3,7 +3,7 @@ pi = n.pi
 import os
 from sys import argv
 
-for milk in [1]:
+try:
     argv, expt, num_el_fine_th, dt, eccen, inpname, constit = argv
     d = n.genfromtxt('ExptParams.dat', delimiter=', ', dtype=str)
     # [0]Expt no, [1]IDg, [2]Mean thickness, [3]Min thickness
@@ -11,11 +11,8 @@ for milk in [1]:
     if eccen == 'auto':
         eccen = 1 - float(tmin)/float(tg)
         print('Eccen = {:.2f}'.format(eccen*100))
-    else:
-        raise ValueError('eccen not defined!')
-'''
-except:
-    raise 'Problem!'
+except ValueError:
+    raise ValueError('Problem!')
     expt = '20'
     ID = '1.75' # Inner Radius
     tg = '0.038'
@@ -23,7 +20,6 @@ except:
     dt = '.01'
     inpname = 'Input_20'
     constit = 'vm'
-'''
 
 Lg = '0.2'
 Ltop = '1.3'  # Length of thick section above radius/chamf
