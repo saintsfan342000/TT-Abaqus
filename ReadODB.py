@@ -18,7 +18,7 @@ pi = np.pi
 try:
     job = argv[1].split('.')[0] # Job name, cutting off the .odb extension in case it was given
 except IndexError:
-    job = 'Test2'
+    job = 'Input3'
 
 if not os.path.isfile(job + '.odb'):
     raise ValueError('The specified job name "%s" does not exist.'%(job))
@@ -39,27 +39,68 @@ h_nset_rp_top = h_odb.rootAssembly.nodeSets[nset_rp_top]
 h_nset_dr_lo = h_inst.nodeSets[nset_dr_lo]
 h_nset_dr_hi = h_inst.nodeSets[nset_dr_hi]
 h_elset_th = h_inst.elementSets[elset_th]
-#h_elset_th = h_inst.elementSets[elset_th]
 
 F = np.empty( (num_incs) )
 T = np.empty( (num_incs) )
 d_lo = np.empty( (num_incs) )
-d_hi_= np.empty( (num_incs) )
-r_lo = np.empty( (num_incs) )
-r_hi = np.empty( (num_incs) )
+d_hi = np.empty( (num_incs) )
 
 # Grab undef coords of dr_lo and hi
 Lg_lo = h_nset_dr_lo.nodes[0].coordinates[2]
 Lg_hi = h_nset_dr_hi.nodes[0].coordinates[2]
 
+dr_lo = np.empty((num_incs,3))
+dr_hi = np.empty((num_incs,3))
+
 for i in range(num_incs):
-    #F[i] = h_All_Frames[i].fieldOutputs['CF'].getSubset(region=h_nset_rp_top).values[0].data[3]
-    #T[i] = h_All_Frames[i].fieldOutputs['CM'].getSubset(region=h_nset_rp_top).values[0].data[3]
-    d_lo = h_All_Frames[i].fieldOutputs['U'].getSubset(region=h_nset_dr_lo).values[0].data[2]
-    d_hi = h_All_Frames[i].fieldOutputs['U'].getSubset(region=h_nset_dr_hi).values[0].data[2]
-    r_lo = h_All_Frames[i].fieldOutputs['UR'].getSubset(region=h_nset_dr_lo).values[0].data[2]
-    r_hi = h_All_Frames[i].fieldOutputs['UR'].getSubset(region=h_nset_dr_hi).values[0].data[2]
+    F[i] = h_All_Frames[i].fieldOutputs['CF'].getSubset(region=h_nset_rp_top).values[0].data[2]
+    T[i] = h_All_Frames[i].fieldOutputs['CM'].getSubset(region=h_nset_rp_top).values[0].data[2]
+    d_lo[i] = h_All_Frames[i].fieldOutputs['U'].getSubset(region=h_nset_dr_lo).values[0].data[2]
+    d_hi[i] = h_All_Frames[i].fieldOutputs['U'].getSubset(region=h_nset_dr_hi).values[0].data[2]
+    dr_lo[i] = h_All_Frames[i].fieldOutputs['COORD'].getSubset(region=h_nset_dr_lo).values[0].data[:]
+    dr_hi[i] = h_All_Frames[i].fieldOutputs['COORD'].getSubset(region=h_nset_dr_hi).values[0].data[:]
 
 h_odb.close()
 
+phi_lo = 2*(180/pi)*np.arctan2(dr_lo[:,1],dr_lo[:,0])
+phi_lo-=phi_lo[0]
 
+phi_hi = 2*(180/pi)*np.arctan2(dr_hi[:,1],dr_hi[:,0])
+phi_hi-=phi_hi[0]
+
+
+# Convert disp to d/Lg
+d_lo, d_hi = d_lo/Lg_lo, d_hi/Lg_hi
+
+def headerline(fname, hl):
+    fid = open(fname, 'r')
+    data = fid.read()
+    fid.close()
+    del fid
+    fid = open(fname, 'w')
+    fid.write(hl)
+    if hl[-1] != '\n':
+        fid.write('\n')
+    fid.write(data)
+    fid.close()
+
+# Save
+np.savetxt('disprot.dat',X = np.vstack((F, T, d_lo, phi, d_hi, r_hi)).T, fmt='%.12f', delimiter=', ')
+headerline('disprot.dat','#[0]Nom AxSts, [1]Nom Shear Sts, [2]d/Lg lo, [3]Rot lo, [4]d/Lg hi, [5]Rot hi\n')
+#
+#
+#
+#
+#
+#
+#
+#
+#
+#
+#
+#
+#
+#
+#
+#
+#

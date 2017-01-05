@@ -24,18 +24,17 @@ if not( constit in ['vm', 'VM', 'H8', 'h8', 'anis', 'ANIS']):
 # Open up TT-Summary to get the limit loads and some other info
 key = read_excel('TT-Summary.xlsx',sheetname='Summary',header=None,index_col=None,skiprows=1).values
 key = key[ key[:,0] == expt ]
-a_true, R, t, force, torque = n.mean(key[:,[2,3,4,9,10]], axis=0) # Since this has shape (1,...)
-torque*=(2*pi*R*R*t) # torque to force
+a_true, R, t, force, torque, dmax = n.mean(key[:,[2,3,4,9,10,-2]], axis=0) # Since this has shape (1,...)
+torque*=(2*pi*R*R*t)*500 # torque to force
+# The *500 is b/c abaqus behaves odd when the cloads are O(1) 
+# The behavior is normal when the cloads are O(1000)
+# We'll divide the max LPF by 500 further down
 K = a_true/R # load ratio
 force = K*torque # force
-if (a_true >= 3.4) or (n.isnan(a_true)):
-    # Disp. control:  Monitor axial disp
-    riks_DOF_num = 3
-    riks_DOF_val = .05
-else:
-    # Rot. control: Monitor rotation
-    riks_DOF_num = 6
-    riks_DOF_val = 15*pi/180
+# Disp. control:  Monitor axial disp
+# Can't monitor rotation (UR3 of a node is not rot'n about z-axis)
+riks_DOF_num = 3
+riks_DOF_val = 1.2*(dmax*0.63)/2
 
 # Load up the node and element lists
 nodelist = n.load('./ConstructionFiles/abaqus_nodes.npy')
@@ -97,7 +96,7 @@ fid.write('*assembly, name=ASSEMBLY\n')
 fid.write('*instance, name=INSTANCE, part=PART\n')
 fid.write('*end instance\n')
 # Reference points
-nodenum, zcoord = nodelist[:,0].max()+1, nodelist[:,2].max()
+nodenum, zcoord = nodelist[:,0].max()+1, nodelist[:,3].max()
 fid.write('*node, nset=NS_RPTOP\n' +
           '{:.0f}, 0, 0, {:.12f}\n'.format(nodenum, zcoord)
           )
@@ -176,7 +175,7 @@ fid.write('*step, name=STEP, nlgeom=yes, inc=500\n')
 if not n.isnan(a_true):
     # Riks if tension and torsion
     fid.write('*static, riks\n' +
-            '0.01, 1.0, 1e-05, .005, 1.1, ASSEMBLY.RIKSMON, {:.0f}, {:.3f}\n'.format(riks_DOF_num, riks_DOF_val)
+            '0.01, 1.0, 1e-05, .005, .0022, ASSEMBLY.RIKSMON, {:.0f}, {:.6f}\n'.format(riks_DOF_num, riks_DOF_val)
               )
     fid.write('**[1]Inital arc len, [2]total step, [3]minimum increm, [4]max increm (no max if blank), [5]Max LPF, [6]Node whose disp is monitored, [7]DOF, [8]Max Disp\n')
     fid.write('*cload\n' +
@@ -191,11 +190,12 @@ else:
 
 # field output
 fid.write('*output, field, frequency=1\n')
+fid.write('** COORn must be called under history output, but COORD can be called in field\n')
 fid.write('*node output, nset=INSTANCE.NS_DISPROT_LO\n' +   # disprot nodesets
-          'U, UR\n'
+          'U, UR, COORD\n'
           )
 fid.write('*node output, nset=INSTANCE.NS_DISPROT_HI\n' +
-          'U, UR\n'
+          'U, UR, COORD\n'
           )
 fid.write('*node output, nset=ASSEMBLY.NS_RPTOP\n' +    # refpt node
           'U, UR, CF\n'
@@ -208,12 +208,24 @@ fid.write('*node output, nset=INSTANCE.NS_RADIALCONTRACTION\n' +    # radial con
           )
 for i in ['ES_Z', 'ES_TH', 'ES_TH_BACK']:
     fid.write('*element output, elset=INSTANCE.{}, directions=YES\n'.format(i) +    # sts, stn in element sets
-              'S, PE, LE'
+              'S, PE, LE, COORD'
               )
-    if constit in ['H8','anis','ANIS']:
+    if constit in ['H8','h8','anis','ANIS']:
         fid.write(', SDV1, SDV2\n')
     else:
         fid.write('\n')
+
+fid.write('*end step\n')
+# end step
+
+'''
+Abaqus Users Guide: Sxn 2.1.5
+Output database output of field vector-valued quantities at transformed nodes is in the global system. The local transformations are also written to the output database. You can apply these transformations to the results in the Visualization module of Abaqus/CAE to view the vector components in the transformed systems.
+'''
+fid.close()
+
+
+'''
 # History output (coor)
 fid.write('** COORn must be called under history output\n')
 fid.write('*output, history, frequency=1\n')
@@ -226,12 +238,4 @@ fid.write('*node output, nset=INSTANCE.NS_DISPROT_HI\n' +
 fid.write('*node output, nset=INSTANCE.NS_RADIALCONTRACTION\n' +    # radial contraction set
           'COOR1, COOR2, COOR3\n'
           )        
-fid.write('*end step\n')
-# end step
-
 '''
-Abaqus Users Guide: Sxn 2.1.5
-Output database output of field vector-valued quantities at transformed nodes is in the global system. The local transformations are also written to the output database. You can apply these transformations to the results in the Visualization module of Abaqus/CAE to view the vector components in the transformed systems.
-'''
-fid.close()
-
