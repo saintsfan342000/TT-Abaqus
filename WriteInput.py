@@ -36,6 +36,10 @@ force = K*torque # force
 riks_DOF_num = 3
 riks_DOF_val = 1.2*(dmax*0.63)/2
 
+print('Cload 3 magnitude: {:.2f}'.format(force))
+print('Cload 6 magnitude: {:.2f}'.format(torque))
+print('Max displacement of Riks Node = {:.8f}'.format(riks_DOF_val))
+
 # Load up the node and element lists
 nodelist = n.load('./ConstructionFiles/abaqus_nodes.npy')
 elemlist = n.load('./ConstructionFiles/abaqus_elements.npy')
@@ -71,6 +75,14 @@ with open('./ConstructionFiles/abaqus_sets.txt','r') as setfid:
     sets = setfid.read()
     fid.write(sets)
     setfid.close()
+
+# One more dip-rot tracking node, that nearest to X=1.9685/2, Y=0, Z = 0.64
+# I'm doing it here b/c it's easy to work with the entire nodelist
+po = n.array([1.9685/2, 0, 0.64/2])
+loc = n.argmin( n.linalg.norm(nodelist[:,1:] - po, axis=1) )
+nodenum = nodelist[loc, 0]
+fid.write('*nset, nset=NS_DISPROT_NEW\n')
+fid.write('{:.0f}\n'.format(nodenum))
 
 # Orientation, transformation, section
 fid.write('*orientation, name=ANISOTROPY, system=cylindrical, definition=coordinates\n' +
@@ -175,7 +187,7 @@ fid.write('*step, name=STEP, nlgeom=yes, inc=500\n')
 if not n.isnan(a_true):
     # Riks if tension and torsion
     fid.write('*static, riks\n' +
-            '0.01, 1.0, 1e-05, .005, .0022, ASSEMBLY.RIKSMON, {:.0f}, {:.6f}\n'.format(riks_DOF_num, riks_DOF_val)
+            '0.001, 1.0, 1e-05, .001, .0022, ASSEMBLY.RIKSMON, {:.0f}, {:.6f}\n'.format(riks_DOF_num, riks_DOF_val)
               )
     fid.write('**[1]Inital arc len, [2]total step, [3]minimum increm, [4]max increm (no max if blank), [5]Max LPF, [6]Node whose disp is monitored, [7]DOF, [8]Max Disp\n')
     fid.write('*cload\n' +
