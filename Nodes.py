@@ -15,7 +15,7 @@ then at the end using x=rcos(q),y-rsin(q) to map to a cylinder in cartesian spac
 In addition to a unique node number, each node gets an i,j,k index based on its position
 in r, q, z space (referred to herein as x,z,y, respectively).
 
-x or th, [:,0] = thru thickness
+x or th, [:,0] = thru thickness, or radial coordinate
 y, [:,1] = Axial coord
 z or q, [:,2] = Angle coordinate theta
 '''

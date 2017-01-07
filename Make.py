@@ -60,5 +60,7 @@ else:
     ### Write Input
     println()
     print('Writing input file, {}.inp'.format(inpname))
-    os.system('python WriteInput.py {:s} {:s} {:s}'.format(expt, inpname, constit))
+    os.system('python WriteInput.py {:s} {:s} {:s} {:s} {:s} {:s} {:s}'.format(
+              expt, inpname, constit, num_el_fine_th, 
+              dt, str(eccen), ID ))
     print('Done!')

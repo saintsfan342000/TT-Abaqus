@@ -3,19 +3,22 @@ from numpy import (linspace, asarray, in1d, empty,
                     hstack , vstack, pi, compress)
 from sys import argv
 from pandas import read_excel
+import time
 
 '''
 Writes the input file
 '''
 
-try:
+if len(argv) == 8:
     expt = int(argv[1])
     inpname = argv[2]
     constit = argv[3]
-except IndexError:
-    expt = 20
-    inpname = 'Input_20'
-    constit = 'vm'
+    num_el_fine_th = argv[4]
+    dt = argv[5]
+    ecc = argv[6]
+    ID = argv[7]
+else:
+    raise StandardError('Wrong number of args. Require 7')
 
 # Make sure we have a valid constitutive model
 if not( constit in ['vm', 'VM', 'H8', 'h8', 'anis', 'ANIS']):
@@ -45,6 +48,19 @@ nodelist = n.load('./ConstructionFiles/abaqus_nodes.npy')
 elemlist = n.load('./ConstructionFiles/abaqus_elements.npy')
 
 fid =  open('{}.inp'.format(inpname),'w')
+
+## Info for me
+fid.write('** TT2={}\n'.format(expt))
+fid.write('** alpha = {:.3f}\n'.format(a_true))
+fid.write('** num_el_fine_th = {}\n'.format(num_el_fine_th))
+fid.write('** Imperfection = {} #Not percentage\n'.format(dt))
+fid.write('** Eccentricity = {} #Not percentage\n'.format(ecc))
+fid.write('** Rm = {:.4f}\n'.format(R))
+fid.write('** tg = {:.4f}\n'.format(t))
+fid.write('** ID = {}\n'.format(ID))
+fid.write('** constit = "{}"\n'.format(constit))
+z = time.localtime()
+fid.write('** Generated on {}/{}/{} at {}:{}\n'.format(z[1],z[2],z[0],z[3],z[4]))
 
 ## HEADING and PREPRINT
 fid.write('*Heading\n' +
@@ -207,6 +223,9 @@ fid.write('*node output, nset=INSTANCE.NS_DISPROT_LO\n' +   # disprot nodesets
           'U, UR, COORD\n'
           )
 fid.write('*node output, nset=INSTANCE.NS_DISPROT_HI\n' +
+          'U, UR, COORD\n'
+          )
+fid.write('*node output, nset=INSTANCE.NS_DISPROT_NEW\n' +
           'U, UR, COORD\n'
           )
 fid.write('*node output, nset=ASSEMBLY.NS_RPTOP\n' +    # refpt node
