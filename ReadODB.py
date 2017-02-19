@@ -28,7 +28,7 @@ nset_rp_bot = 'NS_RPBOT'
 nset_dr_lo = 'NS_DISPROT_LO'
 nset_dr_hi = 'NS_DISPROT_HI'
 nset_dr_new = 'NS_DISPROT_NEW'
-elset_th = 'ES_TH'
+elset_th = 'ES_THICKNESS'
 
 h_odb = O.openOdb(job + '.odb',readOnly=True)
 h_inst = h_odb.rootAssembly.instances[ h_odb.rootAssembly.instances.keys()[0] ]

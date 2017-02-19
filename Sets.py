@@ -9,26 +9,14 @@ Generates the node sets and element sets.
 
 Lg = 0.4/2
 
-nodelist = ['node_coords_cors', 'node_coords_fine', 'node_coords_med',
-            'node_coords_ref1_mid', 'node_coords_ref1_th', 'node_coords_ref1_z',
-            'node_coords_ref2_z', 'node_indices_cors', 'node_indices_fine',
-            'node_indices_med', 'node_indices_ref1_mid', 'node_indices_ref1_th',
-            'node_indices_ref1_z', 'node_indices_ref2_z']
+nodelist = ['nc_cors', 'nc_fine', 'nc_med',
+            'nc_ref1_mid', 'nc_ref1_r', 'nc_ref1_q',
+            'nc_ref2_q', 'ni_cors', 'ni_fine',
+            'ni_med', 'ni_ref1_mid', 'ni_ref1_r',
+            'ni_ref1_q', 'ni_ref2_q']
 
 for k,name in enumerate(nodelist):
-    splitname = name.split('_')
-    if len(splitname) == 3:
-        if splitname[1] == 'coords':
-            exec('nc_{} = n.load("./ConstructionFiles/{}.npy")'.format(splitname[2],name))
-        elif splitname[1] == 'indices':
-            exec('ni_{} = n.load("./ConstructionFiles/{}.npy")'.format(splitname[2],name))
-    elif len(splitname) == 4:
-        if splitname[1] == 'coords':
-            exec('nc_{} = n.load("./ConstructionFiles/{}.npy")'.format(
-                '_'.join(splitname[2:]),name))
-        elif splitname[1] == 'indices':
-            exec('ni_{} = n.load("./ConstructionFiles/{}.npy")'.format(
-                '_'.join(splitname[2:]),name))
+    exec('{} = n.load("./ConstructionFiles/{}.npy")'.format(name,name))
 
 E = n.load('./ConstructionFiles/abaqus_elements.npy')
 
@@ -106,7 +94,7 @@ for i,no in enumerate(nodenums):
 # Element sets #
 ################
 
-# Elset_Z
+# Elset_q
 fid.write('*elset, elset=ES_Z\n')
 # A line of elements on the OD running up the test section 
 # Place it on the thinnest wall-thickness area (y = 0, x = OD/2)
@@ -123,9 +111,9 @@ elnums = E[ rng, 0]
 rng = (ni_ref1_mid[:,0] == ni_ref1_mid[:,0].max()) & (ni_ref1_mid[:,2] == 0)
 nodenums = compress(rng, ni_ref1_mid[:,3])
 #nodenums = hstack(( nodenums, compress(rng, ni_ref1_mid[:,3]) ))
-rng = (ni_ref1_z[:,0] == ni_ref1_z[:,0].max()) & (ni_ref1_z[:,2] == 1)
+rng = (ni_ref1_q[:,0] == ni_ref1_q[:,0].max()) & (ni_ref1_q[:,2] == 1)
 #nodenums = hstack(( nodenums, compress(rng, ni_ref1_mid[:,3]) ))
-nodenums2 = compress(rng, ni_ref1_z[:,3])
+nodenums2 = compress(rng, ni_ref1_q[:,3])
 rng = (in1d(E[:,3],nodenums)) & (in1d(E[:,2],nodenums2)) 
 elnums = hstack(( elnums, E[ rng, 0] ))
 # Med
@@ -140,8 +128,8 @@ for i,el in enumerate(elnums):
     else:
         fid.write('{:.0f}, '.format(el))
         
-# Elset_th
-fid.write('*elset, elset=ES_TH\n')
+# Elset_r
+fid.write('*elset, elset=ES_THICKNESS\n')
 # A line of elements on the sym-plane running thru-thickness
 # Places along thinnest wall-thickness area (y = 0, x>0)
 rng = (ni_fine[:,1] == 1) & (ni_fine[:,2] == 0) # == 1 b/c top nodes of element
@@ -155,8 +143,8 @@ for i,el in enumerate(elnums):
     else:
         fid.write('{:.0f}, '.format(el))
         
-# Elset_th_back
-fid.write('*elset, elset=ES_TH_BACK\n')
+# Elset_r_back
+fid.write('*elset, elset=ES_THICKNESS_BACK\n')
 # A line of elements on the sym-plane running thru-thickness
 # Places along THICKNESS wall-thickness area (y = 0, x < 0)
 # z-index = 1, and theta-coord closest to pi
@@ -170,7 +158,7 @@ for i,el in enumerate(elnums):
     if ((i+1)%16 == 0) or (i == len(elnums)-1):
         fid.write('{:.0f}\n'.format(el))
     else:
-        fid.write('{:.0f} ,'.format(el))
+        fid.write('{:.0f}, '.format(el))
 
 fid.close()
 

@@ -29,7 +29,7 @@ else:
 
     Lg = '0.2'
     Ltop = '1.3'  # Length of thick section above radius/chamf
-    ODtop = '1.9685'    # Radius of thick section    
+    ODtop = '1.968'    # Radius of thick section    
     R = '0.125'    # Radius of chamf
     
     ### Nodes
