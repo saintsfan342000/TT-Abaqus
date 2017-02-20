@@ -60,10 +60,13 @@ elht_fine = tg / num_el_fine_r # Elemt height equal to element width
 num_el_fine_z = int(start_ref1 // elht_fine + 1)   # Number of fine-mesh elements in z-dir
 num_node_fine_z = num_el_fine_z + 1    # Num nodes in z-dir up to START of refine
 num_node_fine_r = num_el_fine_r + 1
-dq_fine = elht_fine/ID  # Angular step of an element
+dq_fine = elht_fine/ID  # Estimate angular step of an element
 num_el_fine_q = int(angle//dq_fine)
 if num_el_fine_q%9 != 0: 
     num_el_fine_q-=(num_el_fine_q%9)
+# Adjust num if angle != 2pi
+if angle != 2*pi:
+   num_el_fine_q+=1
 dq_fine = angle/(num_el_fine_q-1)   # Corrected angular step
 # medium mesh definitions
 num_el_med_r = int(num_el_fine_r/3)
@@ -72,20 +75,21 @@ elht_med = 3*elht_fine
 start_med_z = start_ref1 + 2*elht_med
 num_el_med_z = int((start_ref2 - start_med_z)//elht_med)
 num_node_med_z = num_el_med_z + 1
-dq_med=3*dq_fine    # Cannot be changed!
-# medium mesh definitions
+# Coarse mesh definitions
 num_el_cors_r = num_el_med_r # Only refining height wise and circumfwise, not thru-thickness
 num_node_cors_r = num_el_cors_r + 1
 elht_cors = 3*elht_med
 start_cors_z = start_ref2 + 1*elht_cors   # Again, not a thickness
 num_el_cors_z = int((ztop - start_cors_z) // elht_cors)   # Number of elements up height in coarse rgn
 num_node_cors_z = num_el_cors_z + 1   # Num nodes in z-dir from start of coarse to top
-dq_cors = dq_med*3  # Cannot be changed!
 
 # Layout the fine-mesh nodes
 zspace = linspace(0, start_ref1, num_node_fine_z)   # Linspace of z-coordinates of fine nodes, up to start_ref1
 zindspace = n.arange(len(zspace))   # Corresponding indices
-qspace = n.linspace(0, angle-dq_fine, num_el_fine_q)  # Linspace of theta-coordinates
+if angle == 2*pi:
+    qspace = n.linspace(0, angle-dq_fine, num_el_fine_q)  # Linspace of theta-coordinates
+else:
+    qspace = n.linspace(0, angle, num_el_fine_q)
 qindspace = n.arange(len(qspace))
 rindspace = n.arange(num_node_fine_r)
 OD_fine = CalcOD(zspace)
