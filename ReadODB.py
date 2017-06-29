@@ -15,6 +15,8 @@ import os
 from sys import argv
 pi = np.pi
 
+readstsstn=True
+
 try:
     job = argv[1].split('.')[0] # Job name, cutting off the .odb extension in case it was given
 except IndexError:
@@ -44,41 +46,56 @@ h_elset_th = h_inst.elementSets[elset_th]
 
 F = np.empty( (num_incs) )
 T = np.empty( (num_incs) )
-d_lo = np.empty( (num_incs) )
-d_hi = np.empty( (num_incs) )
+d_lo = np.empty( (num_incs, 3) )
+d_hi = np.empty( (num_incs, 3) )
+d_new = np.empty( (num_incs, 3) )
 
 # Grab undef coords of dr_lo and hi
-Lg_lo = h_nset_dr_lo.nodes[0].coordinates[2]
-Lg_hi = h_nset_dr_hi.nodes[0].coordinates[2]
-Lg_new = h_nset_dr_new.nodes[0].coordinates[2]
+c_lo = h_nset_dr_lo.nodes[0].coordinates[:]
+Lg_lo = c_lo[2]
+c_hi = h_nset_dr_hi.nodes[0].coordinates[:]
+Lg_hi = c_hi[2]
+c_new = h_nset_dr_new.nodes[0].coordinates[:]
+Lg_new = c_new[2]
 
-dr_lo = np.empty((num_incs,3))
-dr_hi = np.empty((num_incs,3))
-dr_new = np.empty((num_incs,3))
+if readstsstn:
+    S = np.empty((num_incs,6))
+    LE = np.empty_like(S)
+    PE = np.empty_like(S)
+    # For the local coordinate system of the node in center of ES_TH
+    LCS = np.empty((num_incs,3,3))
 
 for i in range(num_incs):
-    F[i] = h_All_Frames[i].fieldOutputs['CF'].getSubset(region=h_nset_rp_top).values[0].data[2]
-    T[i] = h_All_Frames[i].fieldOutputs['CM'].getSubset(region=h_nset_rp_top).values[0].data[2]
-    d_lo[i] = h_All_Frames[i].fieldOutputs['U'].getSubset(region=h_nset_dr_lo).values[0].data[2]
-    d_hi[i] = h_All_Frames[i].fieldOutputs['U'].getSubset(region=h_nset_dr_hi).values[0].data[2]
-    dr_lo[i] = h_All_Frames[i].fieldOutputs['COORD'].getSubset(region=h_nset_dr_lo).values[0].data[:]
-    dr_hi[i] = h_All_Frames[i].fieldOutputs['COORD'].getSubset(region=h_nset_dr_hi).values[0].data[:]
-    dr_new[i] = h_All_Frames[i].fieldOutputs['COORD'].getSubset(region=h_nset_dr_new).values[0].data[:]
+    frame = h_All_Frames[i]
+    F[i] = frame.fieldOutputs['CF'].getSubset(region=h_nset_rp_top).values[0].data[2]
+    T[i] = frame.fieldOutputs['CM'].getSubset(region=h_nset_rp_top).values[0].data[2]
+    d_lo[i] = frame.fieldOutputs['U'].getSubset(region=h_nset_dr_lo).values[0].data[:]
+    d_hi[i] = frame.fieldOutputs['U'].getSubset(region=h_nset_dr_hi).values[0].data[:]
+    d_new[i] = frame.fieldOutputs['U'].getSubset(region=h_nset_dr_new).values[0].data[:]
+    if readstsstn:
+        # Get S for each element in the elset and take the mean
+        fv = frame.fieldOutputs['S'].getSubset(region=h_elset_th).values
+        S[i] = np.array([ fv[k].data for k in range(len(fv)) ]).mean(axis=0)
+        LCS[i] = fv[4].localCoordSystem
+        LCS[i] = LCS[i].T #Transpose it so the dirns are the colums
+        # Log stn
+        fv = frame.fieldOutputs['LE'].getSubset(region=h_elset_th).values
+        LE[i] = np.array([ fv[k].data for k in range(len(fv)) ]).mean(axis=0)
+        # Plastic stn
+        fv = frame.fieldOutputs['PE'].getSubset(region=h_elset_th).values
+        PE[i] = np.array([ fv[k].data for k in range(len(fv)) ]).mean(axis=0)
 
 h_odb.close()
 
-phi_lo = 2*(180/pi)*np.arctan2(dr_lo[:,1],dr_lo[:,0])
-phi_lo-=phi_lo[0]
-
-phi_hi = 2*(180/pi)*np.arctan2(dr_hi[:,1],dr_hi[:,0])
-phi_hi-=phi_hi[0]
-
-phi_new = 2*(180/pi)*np.arctan2(dr_new[:,1],dr_new[:,0])
-phi_new-=phi_new[0]
-
-# Convert disp to d/Lg
-d_lo, d_hi = d_lo/Lg_lo, d_hi/Lg_hi
-d_new = (dr_new[:,2] - dr_new[0,2])/Lg_new
+# Calc phi and delta
+for i in ['_lo','_hi','_new']:
+    # Add on undef coords
+    exec("d%s+=c%s"%(i,i))
+    # phi
+    exec("phi%s = 2*(180/pi)*np.arctan2(d%s[:,1],d%s[:,0])"%(i,i,i))
+    exec("phi%s-=phi%s[0]"%(i,i))
+    # Delta
+    exec("d%s = (d%s[:,2]-d%s[0,2])/d%s[0,2]"%(i,i,i,i))
 
 def headerline(fname, hl):
     fid = open(fname, 'r')
@@ -86,6 +103,8 @@ def headerline(fname, hl):
     fid.close()
     del fid
     fid = open(fname, 'w')
+    if hl[0] != '#':
+        fid.write('#')
     fid.write(hl)
     if hl[-1] != '\n':
         fid.write('\n')
@@ -93,22 +112,14 @@ def headerline(fname, hl):
     fid.close()
 
 # Save
-np.savetxt('disprot.dat',X = np.vstack((F, T, d_lo, phi_lo, d_hi, phi_hi, d_new, phi_new)).T, fmt='%.12f', delimiter=', ')
-headerline('disprot.dat','#[0]Nom AxSts, [1]Nom Shear Sts, [2]d/Lg lo, [3]Rot lo, [4]d/Lg hi, [5]Rot hi, [6]d/Lg new, [7]Rot new\n')
-#
-#
-#
-#
-#
-#
-#
-#
-#
-#
-#
-#
-#
-#
-#
-#
-#
+np.savetxt('disprot_new.dat',X = np.vstack((F, T, d_lo, phi_lo, d_hi, phi_hi, d_new, phi_new)).T, fmt='%.12f', delimiter=', ')
+headerline('disprot_new.dat','#[0]Nom AxSts, [1]Nom Shear Sts, [2]d/Lg lo, [3]Rot lo, [4]d/Lg hi, [5]Rot hi, [6]d/Lg new, [7]Rot new\n')
+
+if readstsstn:
+    np.savetxt('S.dat', X=S, fmt='%.6f', delimiter=',')
+    headerline('S.dat','[0]Srr, [1]Sqq, [2]Szz, [4]Srq, [5]Srz?, [6]Sqz')
+    np.savetxt('LE.dat', X=LE, fmt='%.6f', delimiter=',')
+    headerline('LE.dat','[0]LErr, [1]LEqq, [2]LEzz, [4]LErq, [5]LErz?, [6]LEqz')
+    np.savetxt('PE.dat', X=PE, fmt='%.6f', delimiter=',')
+    headerline('PE.dat','[0]PErr, [1]PEqq, [2]PEzz, [4]PErq, [5]PErz?, [6]PEqz')
+    np.save('LCS.npy', LCS)
