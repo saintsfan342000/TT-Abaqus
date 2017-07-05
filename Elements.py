@@ -49,7 +49,7 @@ num_el_cors_tot = num_el_cors_q*num_el_cors_z*num_el_cors_r
 ########################################################
 # Notice, the inner-most loop is "for i in num_el_fine_r",
 # meaning I will connect thru-thickness first, then in q/circ, then in z/axial
-elcon_fine = n.empty((num_el_fine_tot,8))
+elcon_fine = n.empty((num_el_fine_tot,9), dtype=int)
 row = 0
 for j in range(num_el_fine_z):
     for k in range(num_el_fine_q):
@@ -68,15 +68,15 @@ for j in range(num_el_fine_z):
             elcon_temp = [0,0,0,0,0,0,0,0]
             for u,v in enumerate(index):
                 elcon_temp[u] = ni3d_fine[v[0],v[1],v[2]]
-            elcon_fine[row] = elcon_temp
+            elcon_fine[row,:-1] = elcon_temp
             row+=1
-elnums = (n.arange(len(elcon_fine))+1)[:,None]
-elcon_fine = hstack((elcon_fine,elnums)) 
+elnums = n.arange(len(elcon_fine)) + 1
+elcon_fine[:,-1] = elnums
 print('Connected on Fine') 
 ########################################################    
 ################## Connnect on Med ##################
 ########################################################
-elcon_med = n.empty((num_el_med_tot,8))
+elcon_med = n.empty((num_el_med_tot,9), dtype=int)
 row = 0
 for j in range(num_el_med_z):
     for k in range(num_el_med_q):
@@ -94,15 +94,15 @@ for j in range(num_el_med_z):
                 index[index[:,2] == k+1,2] = 0            
             for u,v in enumerate(index):
                 elcon_temp[u] = ni3d_med[v[0],v[1],v[2]]
-            elcon_med[row] = elcon_temp
+            elcon_med[row,:-1] = elcon_temp
             row+=1
-elnums = (n.arange(len(elcon_med)) + n.max(elnums))[:,None]+1
-elcon_med = hstack((elcon_med,elnums)) 
+elnums = n.arange(elcon_med.shape[0]) + n.max(elnums) + 1
+elcon_med[:,-1] = elnums
 print('Connected on Med')
 ########################################################    
 ################## Connnect on Coarse ##################
 ########################################################
-elcon_cors = n.empty((num_el_cors_tot,8))
+elcon_cors = n.empty((num_el_cors_tot,9), dtype=int)
 row = 0
 for j in (n.arange(num_el_cors_z)):
     for k in range(num_el_cors_q):
@@ -120,10 +120,10 @@ for j in (n.arange(num_el_cors_z)):
             elcon_temp = [0,0,0,0,0,0,0,0]
             for u,v in enumerate(index):
                 elcon_temp[u] = ni3d_cors[v[0],v[1],v[2]]
-            elcon_cors[row] = elcon_temp
+            elcon_cors[row,:-1] = elcon_temp
             row+=1
-elnums = (n.arange(len(elcon_cors)) + n.max(elnums))[:,None]+1
-elcon_cors = hstack((elcon_cors,elnums)) 
+elnums = n.arange(elcon_cors.shape[0]) + n.max(elnums) + 1
+elcon_cors[:,-1] = elnums 
 print('Connected on Coarse')
 ########################################################    
 ########## Connnect Ref1.  Fine to ref1_q ##############
@@ -135,7 +135,8 @@ print('Connected on Coarse')
 j_fine = ni3d_fine.shape[1] - 1
 j_mid = 0
 j_ref = 0
-elcon_ref1_q = n.empty((0,8))   # Too difficult to figure out the shape I need before hand 
+elcon_ref1_q = n.empty((num_el_fine_r*num_el_fine_q*4//3,9), dtype=int)
+row = 0
 for k in range(num_el_fine_q):
     if k%3 == 0:
         for i in range(num_el_fine_r): 
@@ -148,7 +149,8 @@ for k in range(num_el_fine_q):
                      ni3d_fine[i+1,j_fine,k+1],
                      ni3d_fine[i,j_fine,k+1]
                     ]
-            elcon_ref1_q = vstack((elcon_ref1_q,nodes))
+            elcon_ref1_q[row,:-1] = nodes
+            row+=1
     elif k%3 == 1:
         for i in range(num_el_fine_r):
             nodes = [ni3d_ref1_q[i,j_ref,k],
@@ -160,7 +162,8 @@ for k in range(num_el_fine_q):
                      ni3d_fine[i+1,j_fine,k+1],
                      ni3d_fine[i,j_fine,k+1]
                     ]
-            elcon_ref1_q = vstack((elcon_ref1_q,nodes))
+            elcon_ref1_q[row,:-1] = nodes
+            row+=1
     elif k%3 == 2:
         for i in range(num_el_fine_r):
             # Exception for the last circumferential set to connect back to q=0
@@ -185,7 +188,8 @@ for k in range(num_el_fine_q):
                          ni3d_fine[i+1,j_fine,k+1],
                          ni3d_fine[i,j_fine,k+1]
                         ]
-            elcon_ref1_q = vstack((elcon_ref1_q,nodes))
+            elcon_ref1_q[row,:-1] = nodes
+            row+=1
     # In a separate loop, connect ref1_q up to ref1_mid
     if k%3 == 0:
         for i in range(num_el_fine_r):            
@@ -201,7 +205,6 @@ for k in range(num_el_fine_q):
                          ni3d_ref1_q[i+1,j_ref,k+2],
                          ni3d_ref1_q[i,j_ref,k+2]
                         ]
-                elcon_ref1_q = vstack((elcon_ref1_q,nodes))
             else:
                 nodes = [ni3d_ref1_mid[i,j_mid,k//3],
                          ni3d_ref1_mid[i+1,j_mid,k//3],
@@ -212,10 +215,11 @@ for k in range(num_el_fine_q):
                          ni3d_ref1_q[i+1,j_ref,k+2],
                          ni3d_ref1_q[i,j_ref,k+2]
                         ]
-                elcon_ref1_q = vstack((elcon_ref1_q,nodes))    
+            elcon_ref1_q[row,:-1] = nodes
+            row+=1
 
-elnums = (n.arange(len(elcon_ref1_q)) + n.max(elnums))[:,None]+1
-elcon_ref1_q = hstack((elcon_ref1_q,elnums)) 
+elnums = n.arange(elcon_ref1_q.shape[0]) + n.max(elnums) + 1
+elcon_ref1_q[:,-1] = elnums
 
 ########################################################    
 ########## Connnect Ref1_mid to ref1_r ################
@@ -227,7 +231,8 @@ elcon_ref1_q = hstack((elcon_ref1_q,elnums))
 j_med = 0
 j_mid = 0
 j_ref = 0
-elcon_ref1_r = n.empty((0,8))
+elcon_ref1_r = n.empty((num_el_med_r*4*num_el_med_q,9), dtype=int)
+row=0
 for k in range(num_el_med_q):
     for i in range(num_el_fine_r):
         # Exception for the last the final z elements which need to 
@@ -244,7 +249,8 @@ for k in range(num_el_med_q):
                      ni3d_ref1_mid[i+1,j_mid,k+1],
                      ni3d_ref1_mid[i,j_mid,k+1]
                     ]
-            elcon_ref1_r = vstack((elcon_ref1_r,nodes))
+            elcon_ref1_r[row, :-1] = nodes
+            row+=1
         elif i%3 == 1:
             nodes = [ni3d_ref1_r[i,j_ref,k],
                      ni3d_ref1_r[i+1,j_ref,k],
@@ -255,7 +261,8 @@ for k in range(num_el_med_q):
                      ni3d_ref1_mid[i+1,j_mid,k+1],
                      ni3d_ref1_mid[i,j_mid,k+1]
                     ]
-            elcon_ref1_r = vstack((elcon_ref1_r,nodes))
+            elcon_ref1_r[row, :-1] = nodes
+            row+=1
         elif i%3 == 2:
             nodes = [ni3d_ref1_r[i,j_ref,k],
                      ni3d_med[(i+1)//3,j_med,k],
@@ -266,7 +273,8 @@ for k in range(num_el_med_q):
                      ni3d_ref1_mid[i+1,j_mid,k+1],
                      ni3d_ref1_mid[i,j_mid,k+1]
                     ]
-            elcon_ref1_r = vstack((elcon_ref1_r,nodes))                
+            elcon_ref1_r[row, :-1] = nodes                
+            row+=1
         if i%3 == 0:
             nodes = [ni3d_med[i//3,j_med,k],
                      ni3d_med[(i+3)//3,j_med,k],
@@ -277,18 +285,21 @@ for k in range(num_el_med_q):
                      ni3d_ref1_r[i+2,j_ref,k+1],
                      ni3d_ref1_r[i+1,j_ref,k+1]
                     ]
-            elcon_ref1_r = vstack((elcon_ref1_r,nodes))
+            elcon_ref1_r[row, :-1] = nodes
+            row+=1
             
-elnums = (n.arange(len(elcon_ref1_r)) + n.max(elnums))[:,None]+1
-elcon_ref1_r = hstack((elcon_ref1_r,elnums))  
+elnums = n.arange(elcon_ref1_r.shape[0]) + n.max(elnums) + 1
+elcon_ref1_r[:,-1] = elnums  
 print('Connected on Ref1')
+
 ########################################################    
 ########## Connect med to ref2, ref2 to cors
 ########################################################
 j_med = ni3d_med.shape[1] - 1
 j_cors = 0
 j_ref = 0
-elcon_ref2 = n.empty((0,8))
+elcon_ref2 = empty((num_el_cors_r*num_el_cors_q*4,9), dtype=int)
+row = 0
 for k in range(num_el_med_q):
     if k%3 == 0:
         for i in range(num_el_med_r): 
@@ -301,7 +312,8 @@ for k in range(num_el_med_q):
                      ni3d_med[i+1,j_med,k+1],
                      ni3d_med[i,j_med,k+1]
                     ]
-            elcon_ref2 = vstack((elcon_ref2,nodes))
+            elcon_ref2[row,:-1] = nodes
+            row+=1
     elif k%3 == 1:
         for i in range(num_el_med_r):
             nodes = [ni3d_ref2_q[i,j_ref,k],
@@ -313,7 +325,8 @@ for k in range(num_el_med_q):
                      ni3d_med[i+1,j_med,k+1],
                      ni3d_med[i,j_med,k+1]
                     ]
-            elcon_ref2 = vstack((elcon_ref2,nodes))
+            elcon_ref2[row,:-1] = nodes
+            row+=1
     elif k%3 == 2:
         for i in range(num_el_med_r):
             # Exception for the last circumferential set
@@ -338,7 +351,8 @@ for k in range(num_el_med_q):
                          ni3d_med[i+1,j_med,k+1],
                          ni3d_med[i,j_med,k+1]
                         ]
-            elcon_ref2 = vstack((elcon_ref2,nodes))
+            elcon_ref2[row,:-1] = nodes
+            row+=1
     # In a separate loop, connect ref2_q up to ref2_mid
     if k%3 == 0:
         for i in range(num_el_med_r):            
@@ -352,7 +366,6 @@ for k in range(num_el_med_q):
                          ni3d_ref2_q[i+1,j_ref,k+2],
                          ni3d_ref2_q[i,j_ref,k+2]
                         ]
-                elcon_ref2 = vstack((elcon_ref2,nodes))
             else:
                 nodes = [ni3d_cors[i,j_cors,k//3],
                          ni3d_cors[i+1,j_cors,k//3],
@@ -363,9 +376,10 @@ for k in range(num_el_med_q):
                          ni3d_ref2_q[i+1,j_ref,k+2],
                          ni3d_ref2_q[i,j_ref,k+2]
                         ]
-                elcon_ref2 = vstack((elcon_ref2,nodes))    
-elnums = (n.arange(len(elcon_ref2)) + n.max(elnums))[:,None]+1
-elcon_ref2 = hstack((elcon_ref2,elnums)) 
+            elcon_ref2[row,:-1] = nodes
+            row+=1
+elnums = n.arange(elcon_ref2.shape[0]) + n.max(elnums) + 1
+elcon_ref2[:,-1] = elnums 
 print('Connected on Ref2')
 
 elcon = n.vstack((elcon_fine,elcon_med,elcon_cors,elcon_ref1_q,elcon_ref1_r,elcon_ref2,)).astype(int)

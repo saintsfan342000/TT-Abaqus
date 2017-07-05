@@ -21,6 +21,8 @@ try:
     job = argv[1].split('.')[0] # Job name, cutting off the .odb extension in case it was given
 except IndexError:
     job = 'Input3'
+    from glob import glob
+    job = glob('*.odb')[0].split('.')[0]
 
 if not os.path.isfile(job + '.odb'):
     raise ValueError('The specified job name "%s" does not exist.'%(job))
@@ -37,6 +39,16 @@ h_inst = h_odb.rootAssembly.instances[ h_odb.rootAssembly.instances.keys()[0] ]
 h_step = h_odb.steps[ h_odb.steps.keys()[0] ]
 h_All_Frames = h_step.frames
 num_incs = len(h_All_Frames)
+
+'''
+# Transformation of field values
+# Apparently must be done for each field value for each frame
+csysname = h_odb.rootAssembly.datumCsyses.keys()[0] #'ASSEMBLY_INSTANCE_ANISOTROPY'
+h_csys = h_odb.rootAssembly.datumCsyses[csysname]
+fv = frame.fieldOutputs['fv_key']   # No .values!
+transformed_fv = fv.getTransformedField(
+    datumCsys=h_csys)
+'''
 
 h_nset_rp_top = h_odb.rootAssembly.nodeSets[nset_rp_top]
 h_nset_dr_lo = h_inst.nodeSets[nset_dr_lo]
@@ -76,8 +88,8 @@ for i in range(num_incs):
         # Get S for each element in the elset and take the mean
         fv = frame.fieldOutputs['S'].getSubset(region=h_elset_th).values
         S[i] = np.array([ fv[k].data for k in range(len(fv)) ]).mean(axis=0)
-        LCS[i] = fv[4].localCoordSystem
-        LCS[i] = LCS[i].T #Transpose it so the dirns are the colums
+        for j in range(3):
+            LCS[i,:,j] = fv[4].localCoordSystem[j]
         # Log stn
         fv = frame.fieldOutputs['LE'].getSubset(region=h_elset_th).values
         LE[i] = np.array([ fv[k].data for k in range(len(fv)) ]).mean(axis=0)

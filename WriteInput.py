@@ -237,7 +237,7 @@ fid.write('*node output, nset=ASSEMBLY.NS_RPBOT\n' +
 fid.write('*node output, nset=INSTANCE.NS_RADIALCONTRACTION\n' +    # radial contraction set
           'U, UR\n'
           )
-for i in ['ES_Z', 'ES_TH', 'ES_TH_BACK']:
+for i in ['ES_Z', 'ES_THICKNESS', 'ES_THICKNESS_BACK']:
     fid.write('*element output, elset=INSTANCE.{}, directions=YES\n'.format(i) +    # sts, stn in element sets
               'S, PE, LE, COORD'
               )
