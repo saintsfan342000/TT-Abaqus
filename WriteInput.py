@@ -25,8 +25,8 @@ if not( constit in ['vm', 'VM', 'H8', 'h8', 'anis', 'ANIS']):
     raise ValueError("Bad constit given '{}'.\nMust be 'vm', 'VM', 'H8', 'anis', 'ANIS'.".format(constit))
 
 key = n.genfromtxt('ExptSummary.dat', delimiter=', ')
-key = key[ key[:,0] == expt ]
-a_true, R, t, X, sigma, tau, delta, phi, Lg = n.mean(key[:,[2,3,4,9,10,-2]], axis=0) # Since this has shape (1,...)
+key = key[ key[:,0] == expt ].ravel()
+a_true, R, t, X, sigma, torque, dmax, phimax, Lg = key[4:]
 torque*=(2*pi*R*R*t)*500 # torque to force
 # The *500 is b/c abaqus behaves odd when the cloads are O(1) 
 # The behavior is normal when the cloads are O(1000)
@@ -36,7 +36,7 @@ force = K*torque # force
 # Disp. control:  Monitor axial disp
 # Can't monitor rotation (UR3 of a node is not rot'n about z-axis)
 riks_DOF_num = 3
-riks_DOF_val = 1.2*(dmax*0.63)/2
+riks_DOF_val = 1.1*(dmax)/2
 
 print('Cload 3 magnitude: {:.2f}'.format(force))
 print('Cload 6 magnitude: {:.2f}'.format(torque))
@@ -49,7 +49,7 @@ elemlist = n.load('./ConstructionFiles/abaqus_elements.npy')
 fid =  open('{}.inp'.format(inpname),'w')
 
 ## Info for me
-fid.write('** TT2={}\n'.format(expt))
+fid.write('** TTGM={}\n'.format(expt))
 fid.write('** alpha = {:.3f}\n'.format(a_true))
 fid.write('** num_el_fine_th = {}\n'.format(num_el_fine_th))
 fid.write('** Imperfection = {} #Not percentage\n'.format(dt))
@@ -59,7 +59,7 @@ fid.write('** tg = {:.4f}\n'.format(t))
 fid.write('** ID = {}\n'.format(ID))
 fid.write('** constit = "{}"\n'.format(constit))
 z = time.localtime()
-fid.write('** Generated on {}/{}/{} at {}:{}\n'.format(z[1],z[2],z[0],z[3],z[4]))
+fid.write('** Generated on {}/{}/{} at {}:{}\n'.format(*z))
 
 ## HEADING and PREPRINT
 fid.write('*Heading\n' +
@@ -93,7 +93,7 @@ with open('./ConstructionFiles/abaqus_sets.txt','r') as setfid:
 
 # One more dip-rot tracking node, that nearest to X=1.9685/2, Y=0, Z = 0.64
 # I'm doing it here b/c it's easy to work with the entire nodelist
-po = n.array([1.9685/2, 0, 0.64/2])
+po = n.array([1.9675/2, 0, Lg/2])
 loc = n.argmin( n.linalg.norm(nodelist[:,1:] - po, axis=1) )
 nodenum = nodelist[loc, 0]
 fid.write('*nset, nset=NS_DISPROT_NEW\n')
@@ -137,7 +137,7 @@ fid.write('*node, nset=NS_RPBOT\n' +
 # Riks monitoring point, must be defined in the assembly
 fid.write('** Riks displacement monitoring node must be defined in the assemlby\n' + 
           '*nset, nset=RIKSMON, instance=INSTANCE\n' + 
-          'NS_DISPROT_LO\n')
+          'NS_DISPROT_NEW\n')
 # Surfaces
 fid.write('*surface, type=node, name=SURF_TOPSURFACE\n' +
           'INSTANCE.NS_TOPSURFACE\n'
@@ -197,7 +197,7 @@ fid.write('*boundary\n' +
 ###### STEP #######
 ###################
 
-fid.write('*step, name=STEP, nlgeom=yes, inc=500\n')
+fid.write('*step, name=STEP, nlgeom=yes, inc=200\n')
 # [1]Inital arc len, [2]total step, [3]minimum increm, [4]max increm (no max if blank), [5]Max LPF, [6]Node whose disp is monitored, [7]DOF, [8]Max Disp
 if not n.isnan(a_true):
     # Riks if tension and torsion

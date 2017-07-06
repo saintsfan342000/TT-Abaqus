@@ -31,7 +31,7 @@ try:
     dt = float(dt) # Specify dt/tg.  
 except:
     d = n.genfromtxt('ExptSummary.dat', delimiter=', ')
-    alpha, Rm, tg, X* = d[ d[:,0]==2, 4:].ravel()
+    alpha, Rm, tg, *X = d[ d[:,0]==2, 4:].ravel()
     Lg = 0.4 / 2
     Ltop = 0.5  # Length of thick section above radius/chamf
     ODtop = 1.9675/2    # Radius of thick section

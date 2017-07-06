@@ -13,6 +13,7 @@ import odbAccess as O
 import numpy as np
 import os
 from sys import argv
+from glob import glob
 pi = np.pi
 
 readstsstn=True
@@ -20,9 +21,28 @@ readstsstn=True
 try:
     job = argv[1].split('.')[0] # Job name, cutting off the .odb extension in case it was given
 except IndexError:
-    job = 'Input3'
-    from glob import glob
-    job = glob('*.odb')[0].split('.')[0]
+    odbs = glob('*.odb')
+    if len(odbs)>1:
+        raise ValueError('More than one odb in this directory, cant glob the filename.')
+    job = odbs[0].split('.')[0]
+
+inputs = glob('*.inp')
+if len(inputs) != 1:
+    print '%d .inp files in pwd; can only glob if theres 1.  Assuming default values for Rm and tg'%len(inputs)
+    Rm = .8338
+    tg = 0.0389
+else:
+    fid = open(inputs[0], 'r')
+    count = 0
+    for k,line in enumerate(fid):
+        if line.rfind('Rm ') != -1:
+            Rm = float( line.split(' ')[-1] )
+            count += 1
+        if line.rfind('tg =') != -1:
+            tg = float( line.split(' ')[-1] )
+            count += 1
+        if count == 2:
+            break
 
 if not os.path.isfile(job + '.odb'):
     raise ValueError('The specified job name "%s" does not exist.'%(job))
@@ -45,7 +65,7 @@ num_incs = len(h_All_Frames)
 # Apparently must be done for each field value for each frame
 csysname = h_odb.rootAssembly.datumCsyses.keys()[0] #'ASSEMBLY_INSTANCE_ANISOTROPY'
 h_csys = h_odb.rootAssembly.datumCsyses[csysname]
-fv = frame.fieldOutputs['fv_key']   # No .values!
+fv = h_ffos['fv_key']   # No .values!
 transformed_fv = fv.getTransformedField(
     datumCsys=h_csys)
 '''
@@ -78,26 +98,30 @@ if readstsstn:
     LCS = np.empty((num_incs,3,3))
 
 for i in range(num_incs):
-    frame = h_All_Frames[i]
-    F[i] = frame.fieldOutputs['CF'].getSubset(region=h_nset_rp_top).values[0].data[2]
-    T[i] = frame.fieldOutputs['CM'].getSubset(region=h_nset_rp_top).values[0].data[2]
-    d_lo[i] = frame.fieldOutputs['U'].getSubset(region=h_nset_dr_lo).values[0].data[:]
-    d_hi[i] = frame.fieldOutputs['U'].getSubset(region=h_nset_dr_hi).values[0].data[:]
-    d_new[i] = frame.fieldOutputs['U'].getSubset(region=h_nset_dr_new).values[0].data[:]
+    h_ffos = h_All_Frames[i].fieldOutputs  # A handle for all this frame's field outputs
+    F[i] = h_ffos['CF'].getSubset(region=h_nset_rp_top).values[0].data[2]
+    T[i] = h_ffos['CM'].getSubset(region=h_nset_rp_top).values[0].data[2]
+    d_lo[i] = h_ffos['U'].getSubset(region=h_nset_dr_lo).values[0].data[:]
+    d_hi[i] = h_ffos['U'].getSubset(region=h_nset_dr_hi).values[0].data[:]
+    d_new[i] = h_ffos['U'].getSubset(region=h_nset_dr_new).values[0].data[:]
     if readstsstn:
         # Get S for each element in the elset and take the mean
-        fv = frame.fieldOutputs['S'].getSubset(region=h_elset_th).values
+        fv = h_ffos['S'].getSubset(region=h_elset_th).values
         S[i] = np.array([ fv[k].data for k in range(len(fv)) ]).mean(axis=0)
         for j in range(3):
             LCS[i,:,j] = fv[4].localCoordSystem[j]
         # Log stn
-        fv = frame.fieldOutputs['LE'].getSubset(region=h_elset_th).values
+        fv = h_ffos['LE'].getSubset(region=h_elset_th).values
         LE[i] = np.array([ fv[k].data for k in range(len(fv)) ]).mean(axis=0)
         # Plastic stn
-        fv = frame.fieldOutputs['PE'].getSubset(region=h_elset_th).values
+        fv = h_ffos['PE'].getSubset(region=h_elset_th).values
         PE[i] = np.array([ fv[k].data for k in range(len(fv)) ]).mean(axis=0)
 
 h_odb.close()
+
+# F and T to nom sts
+F *= (1/(2*pi*Rm*tg))
+T *= (1/(2*pi*Rm*Rm*tg))
 
 # Calc phi and delta
 for i in ['_lo','_hi','_new']:
@@ -124,8 +148,8 @@ def headerline(fname, hl):
     fid.close()
 
 # Save
-np.savetxt('disprot_new.dat',X = np.vstack((F, T, d_lo, phi_lo, d_hi, phi_hi, d_new, phi_new)).T, fmt='%.12f', delimiter=', ')
-headerline('disprot_new.dat','#[0]Nom AxSts, [1]Nom Shear Sts, [2]d/Lg lo, [3]Rot lo, [4]d/Lg hi, [5]Rot hi, [6]d/Lg new, [7]Rot new\n')
+np.savetxt('disprot.dat',X = np.vstack((F, T, d_lo, phi_lo, d_hi, phi_hi, d_new, phi_new)).T, fmt='%.12f', delimiter=', ')
+headerline('disprot.dat','#[0]Nom AxSts, [1]Nom Shear Sts, [2]d/Lg lo, [3]Rot lo, [4]d/Lg hi, [5]Rot hi, [6]d/Lg new, [7]Rot new\n')
 
 if readstsstn:
     np.savetxt('S.dat', X=S, fmt='%.6f', delimiter=',')
