@@ -24,10 +24,9 @@ else:
 if not( constit in ['vm', 'VM', 'H8', 'h8', 'anis', 'ANIS']):
     raise ValueError("Bad constit given '{}'.\nMust be 'vm', 'VM', 'H8', 'anis', 'ANIS'.".format(constit))
 
-# Open up TT-Summary to get the limit loads and some other info
-key = read_excel('TT-Summary.xlsx',sheetname='Summary',header=None,index_col=None,skiprows=1).values
+key = n.genfromtxt('ExptSummary.dat', delimiter=', ')
 key = key[ key[:,0] == expt ]
-a_true, R, t, force, torque, dmax = n.mean(key[:,[2,3,4,9,10,-2]], axis=0) # Since this has shape (1,...)
+a_true, R, t, X, sigma, tau, delta, phi, Lg = n.mean(key[:,[2,3,4,9,10,-2]], axis=0) # Since this has shape (1,...)
 torque*=(2*pi*R*R*t)*500 # torque to force
 # The *500 is b/c abaqus behaves odd when the cloads are O(1) 
 # The behavior is normal when the cloads are O(1000)

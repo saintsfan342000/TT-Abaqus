@@ -446,6 +446,9 @@ def medcheckcon():
     ax = fig.add_subplot(111,projection='3d')
     p.tight_layout()    
     nc_med = n.load('./ConstructionFiles/nc_med.npy')            
+    elht_med = 3*.038
+    dq_med = elht_med / (1-.188)
+    angle = 2*pi
     rgn = (nc_med[:,1] >=2*elht_med) & (nc_med[:,2] >=angle - 3*dq_med)
     ax.plot(nc_med[rgn,0],nc_med[rgn,2],nc_med[rgn,1],'b.',alpha=0.5)
     N = elcon_med[-6:,:-1]
@@ -615,10 +618,13 @@ def ref2checkcon(ptime=0.25):
     p.close('all')
     nc_all = n.load('./ConstructionFiles/nc_all.npy')    
     ni_med = n.load('./ConstructionFiles/ni_med.npy')
+    nc_med = n.load('./ConstructionFiles/nc_med.npy')
     nc_cors = n.load('./ConstructionFiles/nc_cors.npy')                
+    ni_cors = n.load('./ConstructionFiles/ni_cors.npy')                
     nc_ref2_q = n.load('./ConstructionFiles/nc_ref2_q.npy')                
     fig = p.figure()
     ax = fig.add_subplot(111,projection='3d')
+    ax.set_ylim([2*pi-2*.038/(1-.188),2*pi])
     p.tight_layout()    
     rgn = ((ni_med[:,1] == n.max(ni_med[:,1])))
     qmax = n.max(nc_med[rgn,2])

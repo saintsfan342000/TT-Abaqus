@@ -23,7 +23,7 @@ Therefore, (x = +OD/2, y = 0) is the thinnest wall, and
 
 try:
     ecc = float(argv[1])
-except IndexError:
+except:
     ecc = 0
 
 # [0] rho, [1]Z, [2]Theta, [3] NodeNum

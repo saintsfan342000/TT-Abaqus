@@ -30,11 +30,12 @@ try:
     num_el_fine_r = int(num_el_fine_r)  # Num elements thru the test section thickness
     dt = float(dt) # Specify dt/tg.  
 except:
+    d = n.genfromtxt('ExptSummary.dat', delimiter=', ')
+    alpha, Rm, tg, X* = d[ d[:,0]==2, 4:].ravel()
     Lg = 0.4 / 2
     Ltop = 0.5  # Length of thick section above radius/chamf
-    ODtop = 1.9685/2    # Radius of thick section
-    ID = 1.75/2 # Inner Radius
-    tg = .038
+    ODtop = 1.9675/2    # Radius of thick section
+    ID = (Rm-tg/2)
     R = .125    # Radius of chamf
     num_el_fine_r = 6 # Num elements thru the test section thicknes
     dt = 0
@@ -42,7 +43,7 @@ except:
 angle = 2*pi    # 2pi for full tube
 coord_end_chamf = sqrt( R**2 - (ODtop-(ID+tg+R))**2 ) + Lg  # y-coord where chamfer reaches ODtop
 ztop = coord_end_chamf + Ltop
-start_ref1 = 2*Lg/3  # y-coord of last node in fine-mesh elements, where the refine starts
+start_ref1 = Lg/2  # y-coord of last node in fine-mesh elements, where the refine starts
 start_ref2 = coord_end_chamf  # y-coord of last node in med-mesh elements, where the refine starts
 
 def CalcOD(Y):
@@ -115,11 +116,23 @@ for v in ni_fine:
 
 # Medium nodes    
 zspace = linspace(start_med_z, start_ref2, num_node_med_z)
+# Refine the z-space on the chamfer so that it's smoother
+zfactor = 2*tg # How much above Lg to start
+ref_fact = 18/num_el_fine_r
+rng_lo =  zspace < (Lg+zfactor)
+rng_hi = zspace > coord_end_chamf
+
+rng_med = ~(rng_lo | rng_hi)  #This is where we refine
+zspace = hstack(( zspace[rng_lo],
+                  linspace(Lg+zfactor, coord_end_chamf, ref_fact*rng_med.sum()-(ref_fact-1)),
+                  zspace[rng_hi]
+               ))
 zindspace = n.arange(len(zspace))
 qspace = qspace[::3] # Keep every third!
 qindspace = n.arange(len(qspace))
 rindspace = n.arange(num_node_med_r)
 OD_med = CalcOD(zspace)
+OD_med[ zspace>=coord_end_chamf ] = ODtop # We do this since there's a flat part on the radius
 nc_med = empty((0,3))
 ni_med = empty((0,3),dtype=int)
 for k,z in enumerate(zspace):

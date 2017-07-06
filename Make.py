@@ -18,18 +18,20 @@ if len(argv) != 7:
     println()
 else:
     argv, expt, num_el_fine_th, dt, eccen, inpname, constit = argv
-    d = n.genfromtxt('ExptParams.dat', delimiter=', ', dtype=str)
+    d = n.genfromtxt('ExptSummary.dat', delimiter=', ', dtype=str)
     # [0]Expt no, [1]IDg, [2]Mean thickness, [3]Min thickness
-    alpha, ID, tg, tmin = d[ d[:,0]==expt, 1:].ravel()   
+    alpha, Rm, tg, X* = d[ d[:,0]==expt, 4:].ravel()   
+    X = X[0]  # Because now I append extra info to ExptSumm
+    ID = '{:.4f}'.format((float(Rm)-float(tg)/2)*2)
     if eccen == 'auto':
-        eccen = 1 - float(tmin)/float(tg)
+        eccen = float(X)/100
         print('Eccen = {:.2f}'.format(eccen*100))
     
     inpname = inpname.split('.')[0] # In case I give an extension.
 
     Lg = '0.2'
-    Ltop = '1.3'  # Length of thick section above radius/chamf
-    ODtop = '1.968'    # Radius of thick section    
+    Ltop = '.5'  # Length of thick section above radius/chamf
+    ODtop = '1.9675'    # Radius of thick section    
     R = '0.125'    # Radius of chamf
     
     ### Nodes
