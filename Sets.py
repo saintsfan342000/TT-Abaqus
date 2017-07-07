@@ -94,7 +94,7 @@ for i,no in enumerate(nodenums):
 # Element sets #
 ################
 
-# Elset_q
+# Elset_z
 fid.write('*elset, elset=ES_Z\n')
 # A line of elements on the OD running up the test section 
 # Place it on the thinnest wall-thickness area (y = 0, x = OD/2)
@@ -128,7 +128,7 @@ for i,el in enumerate(elnums):
     else:
         fid.write('{:.0f}, '.format(el))
         
-# Elset_r
+# Elset_thickness
 fid.write('*elset, elset=ES_THICKNESS\n')
 # A line of elements on the sym-plane running thru-thickness
 # Places along thinnest wall-thickness area (y = 0, x>0)
@@ -143,7 +143,7 @@ for i,el in enumerate(elnums):
     else:
         fid.write('{:.0f}, '.format(el))
         
-# Elset_r_back
+# Elset_thickness_back
 fid.write('*elset, elset=ES_THICKNESS_BACK\n')
 # A line of elements on the sym-plane running thru-thickness
 # Places along THICKNESS wall-thickness area (y = 0, x < 0)
@@ -159,6 +159,19 @@ for i,el in enumerate(elnums):
         fid.write('{:.0f}\n'.format(el))
     else:
         fid.write('{:.0f}, '.format(el))
+        
+# Elset_Hoopsts_anal
+fid.write('*elset, elset=ES_ANALZONE\n')
+# All the elements from 0 to .05 inches, 0 to 22.5 deg
+rng = (nc_fine[:,1] <= 0.05) & (nc_fine[:,2] <= 22.5*pi/180)
+nodenums = compress(rng, ni_fine[:,3])
+rng = (in1d(E[:,1],nodenums))
+elnums = E[rng, 0]
+for i,el in enumerate(elnums):
+    if ((i+1)%16 == 0) or (i == len(elnums)-1):
+        fid.write('{:.0f}\n'.format(el))
+    else:
+        fid.write('{:.0f}, '.format(el))        
 
 fid.close()
 

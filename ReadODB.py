@@ -16,7 +16,8 @@ from sys import argv
 from glob import glob
 pi = np.pi
 
-readstsstn=True
+readstsstn = True
+Anal_Zone = False
 
 try:
     job = argv[1].split('.')[0] # Job name, cutting off the .odb extension in case it was given
@@ -53,6 +54,7 @@ nset_dr_lo = 'NS_DISPROT_LO'
 nset_dr_hi = 'NS_DISPROT_HI'
 nset_dr_new = 'NS_DISPROT_NEW'
 elset_th = 'ES_THICKNESS'
+elset_analzone = 'ES_ANALZONE'
 
 h_odb = O.openOdb(job + '.odb',readOnly=True)
 h_inst = h_odb.rootAssembly.instances[ h_odb.rootAssembly.instances.keys()[0] ]
@@ -91,11 +93,16 @@ c_new = h_nset_dr_new.nodes[0].coordinates[:]
 Lg_new = c_new[2]
 
 if readstsstn:
+    csysname = h_odb.rootAssembly.datumCsyses.keys()[0]
+    h_csys = h_odb.rootAssembly.datumCsyses[csysname]
     S = np.empty((num_incs,6))
     LE = np.empty_like(S)
     PE = np.empty_like(S)
-    # For the local coordinate system of the node in center of ES_TH
-    LCS = np.empty((num_incs,3,3))
+if Anal_Zone:
+    csysname = h_odb.rootAssembly.datumCsyses.keys()[0]  
+    h_csys = h_odb.rootAssembly.datumCsyses[csysname]
+    h_elset_analzone = h_inst.elementSets[elset_analzone]
+    S_Anal_Zone = np.empty((num_incs,6))
 
 for i in range(num_incs):
     h_ffos = h_All_Frames[i].fieldOutputs  # A handle for all this frame's field outputs
@@ -106,17 +113,20 @@ for i in range(num_incs):
     d_new[i] = h_ffos['U'].getSubset(region=h_nset_dr_new).values[0].data[:]
     if readstsstn:
         # Get S for each element in the elset and take the mean
-        fv = h_ffos['S'].getSubset(region=h_elset_th).values
+        fv = h_ffos['S'].getTransformedField(datumCsys=h_csys).getSubset(region=h_elset_th).values
         S[i] = np.array([ fv[k].data for k in range(len(fv)) ]).mean(axis=0)
-        for j in range(3):
-            LCS[i,:,j] = fv[4].localCoordSystem[j]
         # Log stn
-        fv = h_ffos['LE'].getSubset(region=h_elset_th).values
+        fv = h_ffos['LE'].getTransformedField(datumCsys=h_csys).getSubset(region=h_elset_th).values
         LE[i] = np.array([ fv[k].data for k in range(len(fv)) ]).mean(axis=0)
         # Plastic stn
-        fv = h_ffos['PE'].getSubset(region=h_elset_th).values
+        fv = h_ffos['PE'].getTransformedField(datumCsys=h_csys).getSubset(region=h_elset_th).values
         PE[i] = np.array([ fv[k].data for k in range(len(fv)) ]).mean(axis=0)
+    if Anal_Zone:
+        # Get S for each element in the elset and take the mean
+        fv = h_ffos['S'].getgetSubset(region=h_elset_analzone).getSubset(region=h_elset_analzone).values
+        S_Anal_Zone = np.array([ fv[k].data for k in range(len(fv)) ]).mean(axis=0)
 
+        
 h_odb.close()
 
 # F and T to nom sts
@@ -158,4 +168,3 @@ if readstsstn:
     headerline('LE.dat','[0]LErr, [1]LEqq, [2]LEzz, [4]LErq, [5]LErz?, [6]LEqz')
     np.savetxt('PE.dat', X=PE, fmt='%.6f', delimiter=',')
     headerline('PE.dat','[0]PErr, [1]PEqq, [2]PEzz, [4]PErq, [5]PErz?, [6]PEqz')
-    np.save('LCS.npy', LCS)
