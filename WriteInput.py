@@ -167,14 +167,14 @@ fid.write('*end assembly\n')
 fid.write('****************************************\n')
 fid.write('***************  MATERIAL **************\n')
 fid.write('****************************************\n')
-
+fid.write('*material, name=MATERIAL\n')
 if constit in ['vm', 'VM']:
     with open('./ConstructionFiles/abaqus_material_VM_TT20.txt','r') as matfid:
         mat = matfid.read()
         fid.write(mat)
         matfid.close()
-elif constit == 'H8':
-    with open('./ConstructionFiles/abaqus_material_H8.txt','r') as matfid:
+elif constit in ['h8','H8']:
+    with open('./ConstructionFiles/abaqus_material_H8_TT20.txt','r') as matfid:
         mat = matfid.read()
         fid.write(mat)
         matfid.close()    
@@ -187,6 +187,9 @@ elif constit in ['ANIS', 'anis']:
 ###################
 ### INITIAL BCs ###
 ###################
+fid.write('****************************************\n')
+fid.write('**************  INITIAL BCs ************\n')
+fid.write('****************************************\n')
 fid.write('*boundary\n' +
           'ASSEMBLY.NS_RPBOT, 1, 6 \n' + 
           'ASSEMBLY.NS_RPTOP, 1, 2 \n' +      # Top ref point can only translate up and rotate about axis
@@ -196,7 +199,9 @@ fid.write('*boundary\n' +
 ###################
 ###### STEP #######
 ###################
-
+fid.write('****************************************\n')
+fid.write('****************** STEP ****************\n')
+fid.write('****************************************\n')
 fid.write('*step, name=STEP, nlgeom=yes, inc=200\n')
 # [1]Inital arc len, [2]total step, [3]minimum increm, [4]max increm (no max if blank), [5]Max LPF, [6]Node whose disp is monitored, [7]DOF, [8]Max Disp
 if not n.isnan(a_true):
