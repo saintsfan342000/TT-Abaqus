@@ -17,7 +17,7 @@ from glob import glob
 pi = np.pi
 
 readstsstn = True
-Anal_Zone = False
+Anal_Zone = True
 
 try:
     job = argv[1].split('.')[0] # Job name, cutting off the .odb extension in case it was given
@@ -98,6 +98,7 @@ if readstsstn:
     S = np.empty((num_incs,6))
     LE = np.empty_like(S)
     PE = np.empty_like(S)
+
 if Anal_Zone:
     csysname = h_odb.rootAssembly.datumCsyses.keys()[0]  
     h_csys = h_odb.rootAssembly.datumCsyses[csysname]
@@ -123,8 +124,8 @@ for i in range(num_incs):
         PE[i] = np.array([ fv[k].data for k in range(len(fv)) ]).mean(axis=0)
     if Anal_Zone:
         # Get S for each element in the elset and take the mean
-        fv = h_ffos['S'].getgetSubset(region=h_elset_analzone).getSubset(region=h_elset_analzone).values
-        S_Anal_Zone = np.array([ fv[k].data for k in range(len(fv)) ]).mean(axis=0)
+        fv = h_ffos['S'].getTransformedField(datumCsys=h_csys).getSubset(region=h_elset_analzone).values
+        S_Anal_Zone[i] = np.array([ fv[k].data for k in range(len(fv)) ]).mean(axis=0)
 
         
 h_odb.close()
@@ -148,12 +149,17 @@ def headerline(fname, hl):
     data = fid.read()
     fid.close()
     del fid
+    # Insert hashes before all newlines
+    broken = hl.split('\n')
+    broken_with_hash = [0]*len(broken)
+    for k,line in enumerate(broken):
+        if line == broken[-1]:
+            broken_with_hash[k] = '# ' + line + '\n'
+        else:
+            broken_with_hash[k] = '# ' + line
+    newhl = '\n'.join(broken_with_hash)
     fid = open(fname, 'w')
-    if hl[0] != '#':
-        fid.write('#')
-    fid.write(hl)
-    if hl[-1] != '\n':
-        fid.write('\n')
+    fid.write(newhl)
     fid.write(data)
     fid.close()
 
@@ -163,8 +169,12 @@ headerline('disprot.dat','#[0]Nom AxSts, [1]Nom Shear Sts, [2]d/Lg lo, [3]Rot lo
 
 if readstsstn:
     np.savetxt('S.dat', X=S, fmt='%.6f', delimiter=',')
-    headerline('S.dat','[0]Srr, [1]Sqq, [2]Szz, [4]Srq, [5]Srz?, [6]Sqz')
+    headerline('S.dat','ES_THICKNESS\n[0]Srr, [1]Sqq, [2]Szz, [4]Srq, [5]Srz?, [6]Sqz')
     np.savetxt('LE.dat', X=LE, fmt='%.6f', delimiter=',')
-    headerline('LE.dat','[0]LErr, [1]LEqq, [2]LEzz, [4]LErq, [5]LErz?, [6]LEqz')
+    headerline('LE.dat','ES_THICKNESS\n[0]LErr, [1]LEqq, [2]LEzz, [4]LErq, [5]LErz?, [6]LEqz')
     np.savetxt('PE.dat', X=PE, fmt='%.6f', delimiter=',')
-    headerline('PE.dat','[0]PErr, [1]PEqq, [2]PEzz, [4]PErq, [5]PErz?, [6]PEqz')
+    headerline('PE.dat','ES_THICKNESS\n[0]PErr, [1]PEqq, [2]PEzz, [4]PErq, [5]PErz?, [6]PEqz')
+if Anal_Zone:
+    np.savetxt('S_anal_zone.dat', X=S_Anal_Zone, fmt='%.6f', delimiter=',')
+    headerline('S_anal_zone.dat','ES_ANALZONE\n[0]Srr, [1]Sqq, [2]Szz, [4]Srq, [5]Srz?, [6]Sqz')
+    
