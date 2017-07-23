@@ -104,6 +104,8 @@ if Anal_Zone:
     h_csys = h_odb.rootAssembly.datumCsyses[csysname]
     h_elset_analzone = h_inst.elementSets[elset_analzone]
     S_Anal_Zone = np.empty((num_incs,6))
+    EqSts = np.empty(num_incs)
+    EqStn = np.empty(num_incs)
 
 for i in range(num_incs):
     h_ffos = h_All_Frames[i].fieldOutputs  # A handle for all this frame's field outputs
@@ -126,7 +128,16 @@ for i in range(num_incs):
         # Get S for each element in the elset and take the mean
         fv = h_ffos['S'].getTransformedField(datumCsys=h_csys).getSubset(region=h_elset_analzone).values
         S_Anal_Zone[i] = np.array([ fv[k].data for k in range(len(fv)) ]).mean(axis=0)
-
+        try:
+            fv = h_ffos['SDV1'].getSubset(region=h_elset_analzone).values
+            EqStn[i] = np.mean([ fv[k].data for k in range(len(fv)) ])
+            fv = h_ffos['SDV2'].getSubset(region=h_elset_analzone).values
+            EqSts[i] = np.mean([ fv[k].data for k in range(len(fv)) ])
+        except:
+            fv = h_ffos['PEEQ'].getSubset(region=h_elset_analzone).values
+            EqStn[i] = np.mean([ fv[k].data for k in range(len(fv)) ])
+            fv = h_ffos['MISESONLY'].getSubset(region=h_elset_analzone).values
+            EqSts[i] = np.mean([ fv[k].data for k in range(len(fv)) ])
         
 h_odb.close()
 
@@ -177,4 +188,6 @@ if readstsstn:
 if Anal_Zone:
     np.savetxt('S_anal_zone.dat', X=S_Anal_Zone, fmt='%.6f', delimiter=',')
     headerline('S_anal_zone.dat','ES_ANALZONE\n[0]Srr, [1]Sqq, [2]Szz, [4]Srq, [5]Srz?, [6]Sqz')
+    np.savetxt('EqStsStn_anal_zone.dat', X=np.c_[EqSts,EqStn], fmt='%.6f', delimiter=',')
+    headerline('EqStsStn_anal_zone.dat', 'ES_ANALZONE\n[0]EqSts/SDV2, [1]EqStn/SDV1')
     

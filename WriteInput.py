@@ -27,10 +27,13 @@ if not( constit in ['vm', 'VM', 'H8', 'h8', 'anis', 'ANIS']):
 key = n.genfromtxt('ExptSummary.dat', delimiter=', ')
 key = key[ key[:,0] == expt ].ravel()
 a_true, R, t, X, sigma, torque, dmax, phimax, Lg = key[4:]
-torque*=(2*pi*R*R*t)*500 # torque to force
-# The *500 is b/c abaqus behaves odd when the cloads are O(1) 
-# The behavior is normal when the cloads are O(1000)
-# We'll divide the max LPF by 500 further down
+torque*=(2*pi*R*R*t) # torque to force
+if constit in ['vm', 'VM']:
+    # The *500 is b/c abaqus behaves odd when the cloads are O(1) for vm
+    # The behavior is normal when the cloads are O(1000)
+    # We'll divide the max LPF by 500 further down
+    # I found that with H8 it is normal with cloads O(1)
+    torque*=500
 K = a_true/R # load ratio
 force = K*torque # force
 # Disp. control:  Monitor axial disp
@@ -202,17 +205,28 @@ fid.write('*boundary\n' +
 fid.write('****************************************\n')
 fid.write('****************** STEP ****************\n')
 fid.write('****************************************\n')
-fid.write('*step, name=STEP, nlgeom=yes, inc=200\n')
+fid.write('*step, name=STEP, nlgeom=yes, inc=500\n')
 # [1]Inital arc len, [2]total step, [3]minimum increm, [4]max increm (no max if blank), [5]Max LPF, [6]Node whose disp is monitored, [7]DOF, [8]Max Disp
 if not n.isnan(a_true):
     # Riks if tension and torsion
-    fid.write('*static, riks\n' +
-            '0.001, 1.0, 1e-05, .001, .0022, ASSEMBLY.RIKSMON, {:.0f}, {:.6f}\n'.format(riks_DOF_num, riks_DOF_val)
-              )
+    LPFmax = 1.1
+    if constit in ['vm','VM']:
+        LPFmax*=(1/500)
+        fid.write('*static, riks\n' +
+                '0.001, 1.0, 1e-10, .005, {:.4f}, ASSEMBLY.RIKSMON, {:.0f}, {:.6f}\n'.format(LPFmax,riks_DOF_num, riks_DOF_val)
+                  )
+    else:
+        fid.write('*static, riks\n' +
+                '0.075, 1.0, 1e-10, .075, {:.4f}, ASSEMBLY.RIKSMON, {:.0f}, {:.6f}\n'.format(LPFmax,riks_DOF_num, riks_DOF_val)
+                  )
     fid.write('**[1]Inital arc len, [2]total step, [3]minimum increm, [4]max increm (no max if blank), [5]Max LPF, [6]Node whose disp is monitored, [7]DOF, [8]Max Disp\n')
     fid.write('*cload\n' +
               'ASSEMBLY.NS_RPTOP, 3, {:.5f}\n'.format(force) + 
               'ASSEMBLY.NS_RPTOP, 6, {:.5f}\n'.format(torque)
+              )
+    fid.write('** Increase number of permitted cutbacks in increment\n'
+              '*controls, parameters=time incrementation\n' + 
+              ' , , , , , , , 10, , , , , \n'
               )
 else:
     fid.write('*static\n' +
@@ -248,7 +262,7 @@ for i in ['ES_Z', 'ES_THICKNESS', 'ES_THICKNESS_BACK', 'ES_ANALZONE']:
     if constit in ['H8','h8','anis','ANIS']:
         fid.write(', SDV1, SDV2\n')
     else:
-        fid.write('\n')
+        fid.write(', PEEQ, MISESONLY\n')
 
 fid.write('*end step\n')
 # end step
